@@ -1,22 +1,23 @@
 package ticketingsystem;
 
 public class VersionState {
-	Long version;
-	Long state;
-	public VersionState(Long version, Long state) {
+	long version;
+	long state;
+
+	public VersionState(long version, long state) {
 		this.version = version;
 		this.state = state;
 	}
-	
-	public Boolean isVisable(View view){
-		if (version>view.viewId){
+
+	public Boolean isVisable(View view) {
+		if (version > view.viewId) {
 			return false;
-		}else if (version<view.minId){
+		} else if (version < view.minId) {
 			return true;
-		}else{
-			if(view.activeIds.contains(version)){
+		} else {
+			if (view.activeIds.contains(Long.valueOf(version))) {
 				return false;
-			}else{
+			} else {
 				return true;
 			}
 		}

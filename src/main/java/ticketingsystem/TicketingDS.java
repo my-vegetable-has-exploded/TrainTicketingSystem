@@ -4,12 +4,12 @@ import java.util.HashSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TicketingDS implements TicketingSystem {
-	// AtomicLong gobalID;
-	Long gobalID;
+	// Atomiclong gobalID;
+	long gobalID;
 	View preView;
 	volatile boolean isCacheViewUpdate;
 	ReentrantReadWriteLock activeLock;
-	HashSet<Long> activeIds;
+	HashSet<Long>activeIds;
 	Route[] routes;
 	int routenum;
 	int coachnum;
@@ -51,12 +51,12 @@ public class TicketingDS implements TicketingSystem {
 		}
 	}
 
-	public Long beginTrx() {
+	public long beginTrx() {
 		activeLock.writeLock().lock();
 		try {
-			isCacheViewUpdate=false;
+			isCacheViewUpdate = false;
 			gobalID += 1l;
-			Long viewId = gobalID;
+			long viewId = gobalID;
 			activeIds.add(viewId);
 			return viewId;
 		} finally {
@@ -64,10 +64,10 @@ public class TicketingDS implements TicketingSystem {
 		}
 	}
 
-	public boolean closeTrx(Long versionId) {
+	public boolean closeTrx(long versionId) {
 		activeLock.writeLock().lock();
 		try {
-			isCacheViewUpdate=false;
+			isCacheViewUpdate = false;
 			activeIds.remove(versionId);
 			return true;
 		} finally {
@@ -75,12 +75,12 @@ public class TicketingDS implements TicketingSystem {
 		}
 	}
 
-	public Long reopenTrx(Long versionId) {
+	public long reopenTrx(long versionId) {
 		activeLock.writeLock().lock();
 		try {
 			activeIds.remove(versionId);
 			gobalID += 1l;
-			Long viewId = gobalID;
+			long viewId = gobalID;
 			activeIds.add(viewId);
 			return viewId;
 		} finally {
@@ -95,7 +95,7 @@ public class TicketingDS implements TicketingSystem {
 			if (pos == -1) {
 				return null;
 			}
-			Long versionId = beginTrx();
+			long versionId = beginTrx();
 			ResultSeat result = routes[route].tryBuyTicket(pos, versionId, passenger, departure, arrival);
 			if (result.result == Result.SUCCESSED) {
 				closeTrx(versionId);
@@ -112,7 +112,7 @@ public class TicketingDS implements TicketingSystem {
 
 	public boolean refundTicket(Ticket ticket) {
 		while (true) {
-			Long versionId = beginTrx();
+			long versionId = beginTrx();
 			int route = ticket.route;
 			ResultSeat result = routes[route].tryRefundTicket(versionId, ticket);
 			if (result.result == Result.SUCCESSED) {

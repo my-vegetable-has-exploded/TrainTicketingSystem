@@ -55,29 +55,28 @@ public class Route {
 		return -1;
 	}
 
-	public ResultSeat tryBuyTicket(int startPos, Long version, String passenger,int departure, int arrival) {
+	public ResultSeat tryBuyTicket(int startPos, long version, String passenger, int departure, int arrival) {
 		int position = startPos;
 		for (int i = 0; i < coachnum * seatnum; i += 1) {
-			if (seats[position].tryBuyTicket(version, passenger, departure, arrival)==Result.SUCCESSED) {
+			if (seats[position].tryBuyTicket(version, passenger, departure, arrival) == Result.SUCCESSED) {
 				return new ResultSeat(Result.SUCCESSED, position);
 			}
 			position = (position + 1) % totalseats;
 		}
 		return new ResultSeat(Result.NOTAVAILABLE, -1);
 	}
-	
-	public Ticket commitBuyTicket(int position){
+
+	public Ticket commitBuyTicket(int position) {
 		return seats[position].commitBuyTicket();
 	}
 
-	public ResultSeat tryRefundTicket(Long version, Ticket ticket){
-		int position=(ticket.coach-1)*seatnum+ticket.seat-1;
-		Result result=seats[position].tryRefundTicket(version, ticket);
+	public ResultSeat tryRefundTicket(long version, Ticket ticket) {
+		int position = (ticket.coach - 1) * seatnum + ticket.seat - 1;
+		Result result = seats[position].tryRefundTicket(version, ticket);
 		return new ResultSeat(result, position);
 	}
-	
-	
-	public Ticket commitRefundTicket(int position){
+
+	public Ticket commitRefundTicket(int position) {
 		return seats[position].commitBuyTicket();
 	}
 

@@ -21,8 +21,8 @@ public class SeatTest {
 	public void testcheckState() {
 		assertEquals(Seat.checkState(1l, 2, 3), true);
 		assertEquals(Seat.checkState(24l, 1, 3), true);
-		assertEquals(Seat.toIntervalState(4, 5), Long.valueOf(8l));
-		assertEquals(Seat.stateBuy(0l, 4, 5), Long.valueOf(8l));
-		assertEquals(Seat.stateRefund(8l, 4, 5), Long.valueOf(0l));
+		assertEquals(Seat.toIntervalState(4, 5), 8l);
+		assertEquals(Seat.stateBuy(0l, 4, 5), 8l);
+		assertEquals(Seat.stateRefund(8l, 4, 5), 0l);
 	}
 }

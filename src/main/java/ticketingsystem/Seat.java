@@ -6,7 +6,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Seat {
 	ReentrantLock seatLock;
-	HashMap<Long, Ticket> soldTickets;
+	HashMap<Long,Ticket>soldTickets;
 	ArrayList<VersionState> versionStates;
 	int routeId;
 	int coachId;
@@ -26,7 +26,7 @@ public class Seat {
 		tail = 0;
 	}
 
-	public Ticket issueTicket(String passenger, Long tid, int route, int coach, int seat, int departure, int arrival) {
+	public Ticket issueTicket(String passenger, long tid, int route, int coach, int seat, int departure, int arrival) {
 		Ticket ticket = new Ticket();
 		ticket.tid = tid;
 		ticket.route = route;
@@ -42,7 +42,7 @@ public class Seat {
 		return seatLock.isLocked();
 	}
 
-	public Long readView(View view) {
+	public long readView(View view) {
 		int localTail = tail;
 		while (localTail >= 0) {
 			if (versionStates.get(localTail).isVisable(view)) {
@@ -53,34 +53,34 @@ public class Seat {
 		return versionStates.get(localTail).state;
 	}
 
-	static Long toIntervalState(int departure, int arrival) {
+	static long toIntervalState(int departure, int arrival) {
 		return (1l << (arrival - 1)) - (1l << (departure - 1));
 	}
 
-	public static boolean checkState(Long state, int departure, int arrival) {
-		Long intervalState = toIntervalState(departure, arrival);
-		return (state & intervalState) == 0;
+	public static boolean checkState(long state, int departure, int arrival) {
+		// long intervalState = toIntervalState(departure, arrival);
+		return (state & (1l << (arrival - 1)) - (1l << (departure - 1))) == 0;
 	}
 
-	public static Long stateBuy(Long state, int departure, int arrival) {
+	public static long stateBuy(long state, int departure, int arrival) {
 		return state | toIntervalState(departure, arrival);
 	}
 
-	public static Long stateRefund(Long state, int departure, int arrival) {
+	public static long stateRefund(long state, int departure, int arrival) {
 		return state & (~toIntervalState(departure, arrival));
 	}
 
 	public boolean isViewedAvaliable(View view, int departure, int arrival) {
-		Long viewState = readView(view);
+		long viewState = readView(view);
 		return checkState(viewState, departure, arrival);
 	}
 
 	public boolean isCurrentAvaliable(View view, int departure, int arrival) {
-		Long state = versionStates.get(tail).state;
+		long state = versionStates.get(tail).state;
 		return !isLocked() && checkState(state, departure, arrival);
 	}
 
-	public Result tryBuyTicket(Long version, String passenger, int departure, int arrival) {
+	public Result tryBuyTicket(long version, String passenger, int departure, int arrival) {
 		VersionState lastState = versionStates.get(tail);
 		if (lastState.version > version) { // TODO optimize control
 			return Result.SMALLVERSION;
@@ -105,7 +105,7 @@ public class Seat {
 		}
 	}
 
-	public Result tryRefundTicket(Long version, Ticket ticket) {
+	public Result tryRefundTicket(long version, Ticket ticket) {
 		VersionState lastState = versionStates.get(tail);
 		if (lastState.version > version) {
 			return Result.SMALLVERSION;
@@ -131,7 +131,7 @@ public class Seat {
 		}
 	}
 
-	// public Result tryBuyTicket(Long version, String passenger, int tid, int
+	// public Result tryBuyTicket(long version, String passenger, int tid, int
 	// departure, int arrival) {
 	// // TODO check first;
 	// if (seatLock.tryLock()) {
@@ -156,7 +156,7 @@ public class Seat {
 	// }
 	// }
 
-	// public Result tryRefundTicket(Long version, Ticket ticket) {
+	// public Result tryRefundTicket(long version, Ticket ticket) {
 	// if (seatLock.tryLock()) {
 	// VersionState lastState = versionStates.get(tail);
 	// if (lastState.version > version) {

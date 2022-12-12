@@ -1,10 +1,11 @@
 package ticketingsystem;
 
 import java.util.HashSet;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TicketingDS implements TicketingSystem {
-	// Atomiclong gobalID;
+	AtomicLong gID;
 	long gobalID;
 	View preView;
 	volatile boolean isCacheViewUpdate;
@@ -20,6 +21,7 @@ public class TicketingDS implements TicketingSystem {
 	public TicketingDS(int routenum, int coachnum, int seatnum, int stationnum, int threadnum) {
 		activeLock = new ReentrantReadWriteLock();
 		gobalID = 1l;
+		gID=new AtomicLong(1l);
 		preView=null;
 		isCacheViewUpdate=false;
 		routes = new Route[routenum + 1];
@@ -35,44 +37,47 @@ public class TicketingDS implements TicketingSystem {
 	}
 
 	public View createView() {
-		if(isCacheViewUpdate){
-			return preView;
-		}
-		activeLock.readLock().lock();
-		try {
-			long viewId = gobalID;
-			HashSet<Long> actives = new HashSet<Long>();
-			actives.addAll(activeIds);
-			preView=new View(viewId, actives);
-			isCacheViewUpdate=true;
-			return preView;
-		} finally {
-			activeLock.readLock().unlock();
-		}
+		return null;
+		// if(isCacheViewUpdate){
+		// 	return preView;
+		// }
+		// activeLock.readLock().lock();
+		// try {
+		// 	long viewId = gobalID;
+		// 	HashSet<Long> actives = new HashSet<Long>();
+		// 	actives.addAll(activeIds);
+		// 	preView=new View(viewId, actives);
+		// 	isCacheViewUpdate=true;
+		// 	return preView;
+		// } finally {
+		// 	activeLock.readLock().unlock();
+		// }
 	}
 
 	public long beginTrx() {
-		activeLock.writeLock().lock();
-		try {
-			isCacheViewUpdate = false;
-			gobalID += 1l;
-			long viewId = gobalID;
-			activeIds.add(viewId);
-			return viewId;
-		} finally {
-			activeLock.writeLock().unlock();
-		}
+		return gID.getAndIncrement();
+		// activeLock.writeLock().lock();
+		// try {
+		// 	isCacheViewUpdate = false;
+		// 	gobalID += 1l;
+		// 	long viewId = gobalID;
+		// 	activeIds.add(viewId);
+		// 	return viewId;
+		// } finally {
+		// 	activeLock.writeLock().unlock();
+		// }
 	}
 
 	public boolean closeTrx(long versionId) {
-		activeLock.writeLock().lock();
-		try {
-			isCacheViewUpdate = false;
-			activeIds.remove(versionId);
-			return true;
-		} finally {
-			activeLock.writeLock().unlock();
-		}
+		return true;
+		// activeLock.writeLock().lock();
+		// try {
+		// 	isCacheViewUpdate = false;
+		// 	activeIds.remove(versionId);
+		// 	return true;
+		// } finally {
+		// 	activeLock.writeLock().unlock();
+		// }
 	}
 
 	public long reopenTrx(long versionId) {

@@ -6,12 +6,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import junit.framework.*;
 
 public class TicketingSystemTest extends TestCase {
-	private final static int ROUTE_NUM = 10;
-	private final static int COACH_NUM = 10;
+	private final static int ROUTE_NUM = 5;
+	private final static int COACH_NUM = 8;
 	private final static int SEAT_NUM = 100;
-	private final static int STATION_NUM = 20;
+	private final static int STATION_NUM = 10;
 
-	private final static int TEST_NUM = 100000;
+	private final static int TEST_NUM = 200000;
 	private final static int refund = 10;
 	private final static int buy = 30;
 	private final static int query = 100;
@@ -42,7 +42,7 @@ public class TicketingSystemTest extends TestCase {
 	}
 
 	public void testmain() throws InterruptedException {
-		final int[] threadNums = { 4, 8, 16, 32, 64 };
+		final int[] threadNums = { 1,2,4,8,16,32 };
 		int p;
 		for (p = 0; p < threadNums.length; ++p) {
 			final TicketingDS tds = new TicketingDS(ROUTE_NUM, COACH_NUM, SEAT_NUM, STATION_NUM, threadNums[p]);

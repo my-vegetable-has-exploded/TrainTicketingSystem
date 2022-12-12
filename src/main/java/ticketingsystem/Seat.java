@@ -44,12 +44,12 @@ public class Seat {
 
 	public long readView(View view) {
 		int localTail = tail;
-		while (localTail >= 0) {
-			if (versionStates.get(localTail).isVisable(view)) {
-				break;
-			}
-			localTail -= 1;
-		}
+		// while (localTail >= 0) {
+		// 	if (versionStates.get(localTail).isVisable(view)) {
+		// 		break;
+		// 	}
+		// 	localTail -= 1;
+		// }
 		return versionStates.get(localTail).state;
 	}
 

@@ -54,19 +54,19 @@ public class Seat {
 	}
 
 	static Long toIntervalState(int departure, int arrival) {
-		return ((1l << (arrival-1)) - 1l) - ((1l << (departure - 1)) - 1l);
+		return (1l << (arrival - 1)) - (1l << (departure - 1));
 	}
 
 	public static boolean checkState(Long state, int departure, int arrival) {
 		Long intervalState = toIntervalState(departure, arrival);
-		return (~state & intervalState) == intervalState;
+		return (state & intervalState) == 0;
 	}
 
 	public static Long stateBuy(Long state, int departure, int arrival) {
 		return state | toIntervalState(departure, arrival);
 	}
 
-	public static Long stateRefund(Long state, int departure, int arrival){
+	public static Long stateRefund(Long state, int departure, int arrival) {
 		return state & (~toIntervalState(departure, arrival));
 	}
 
@@ -90,10 +90,10 @@ public class Seat {
 		}
 		seatLock.lock();
 		lastState = versionStates.get(tail);
-		// if (lastState.version > version) {
-		// 	seatLock.unlock();
-		// 	return Result.SMALLVERSION;
-		// }
+		if (lastState.version > version) {
+			seatLock.unlock();
+			return Result.SMALLVERSION;
+		}
 		if (checkState(lastState.state, departure, arrival)) {
 			versionStates.add(new VersionState(version, stateBuy(lastState.state, departure, arrival)));
 			tail += 1;
@@ -115,10 +115,10 @@ public class Seat {
 		}
 		seatLock.lock();
 		lastState = versionStates.get(tail);
-		// if (lastState.version > version) { //TODO need?
-		// 	seatLock.unlock();
-		// 	return Result.SMALLVERSION;
-		// }
+		if (lastState.version > version) { // TODO need?
+			seatLock.unlock();
+			return Result.SMALLVERSION;
+		}
 		if (soldTickets.containsKey(ticket.tid)) {
 			versionStates.add(new VersionState(version,
 					stateRefund(lastState.state, ticket.departure, ticket.arrival)));

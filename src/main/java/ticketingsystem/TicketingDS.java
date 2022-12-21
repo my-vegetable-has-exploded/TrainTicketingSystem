@@ -1,29 +1,32 @@
 package ticketingsystem;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TicketingDS implements TicketingSystem {
-	// Atomiclong gobalID;
-	long gobalID;
+	AtomicLong gobalID;
+	// long gobalID;
 	View preView;
 	volatile boolean isCacheViewUpdate;
 	ReentrantReadWriteLock activeLock;
-	HashSet<Long>activeIds;
+	// HashSet<Long> activeIds;
 	Route[] routes;
 	int routenum;
 	int coachnum;
 	int seatnum;
 	int stationnum;
 	int threadnum;
+	WFSnapshot<Long> theadViewId;
 
 	public TicketingDS(int routenum, int coachnum, int seatnum, int stationnum, int threadnum) {
 		activeLock = new ReentrantReadWriteLock();
-		gobalID = 1l;
-		preView=null;
-		isCacheViewUpdate=false;
+		gobalID = new AtomicLong(1);
+		preView = null;
+		isCacheViewUpdate = false;
 		routes = new Route[routenum + 1];
-		activeIds= new HashSet<Long>();
+		// activeIds = new HashSet<Long>();
 		for (int i = 1; i <= routenum; i++) {
 			routes[i] = new Route(i, coachnum, seatnum, stationnum);
 		}
@@ -32,61 +35,52 @@ public class TicketingDS implements TicketingSystem {
 		this.seatnum = seatnum;
 		this.threadnum = threadnum;
 		this.stationnum = stationnum;
+		this.theadViewId = new WFSnapshot<Long>(threadnum, Long.valueOf(0));
+		ThreadID.reset();
 	}
 
 	public View createView() {
-		if(isCacheViewUpdate){
+		if (isCacheViewUpdate) {
 			return preView;
 		}
-		activeLock.readLock().lock();
-		try {
-			long viewId = gobalID;
-			HashSet<Long> actives = new HashSet<Long>();
-			actives.addAll(activeIds);
-			preView=new View(viewId, actives);
-			isCacheViewUpdate=true;
-			return preView;
-		} finally {
-			activeLock.readLock().unlock();
+		Long viewId = gobalID.get();
+		HashSet<Long> actives = new HashSet<Long>();
+		ArrayList<Long> activeIds = theadViewId.scan();
+		for (Long id : activeIds) {
+			if (id != 0) {
+				actives.add(id);
+			}
 		}
+		preView = new View(viewId, actives);
+		isCacheViewUpdate = true;
+		return preView;
 	}
 
 	public long beginTrx() {
-		activeLock.writeLock().lock();
-		try {
-			isCacheViewUpdate = false;
-			gobalID += 1l;
-			long viewId = gobalID;
-			activeIds.add(viewId);
-			return viewId;
-		} finally {
-			activeLock.writeLock().unlock();
-		}
+		Long viewId = gobalID.incrementAndGet();
+		theadViewId.update(viewId);
+		isCacheViewUpdate = false;
+		return viewId;
 	}
 
-	public boolean closeTrx(long versionId) {
-		activeLock.writeLock().lock();
-		try {
-			isCacheViewUpdate = false;
-			activeIds.remove(versionId);
-			return true;
-		} finally {
-			activeLock.writeLock().unlock();
-		}
+	public boolean closeTrx() {
+		theadViewId.update(0L);
+		isCacheViewUpdate = false;
+		return true;
 	}
 
-	public long reopenTrx(long versionId) {
-		activeLock.writeLock().lock();
-		try {
-			activeIds.remove(versionId);
-			gobalID += 1l;
-			long viewId = gobalID;
-			activeIds.add(viewId);
-			return viewId;
-		} finally {
-			activeLock.writeLock().unlock();
-		}
-	}
+	// public long reopenTrx(long versionId) {
+	// 	activeLock.writeLock().lock();
+	// 	try {
+	// 		activeIds.remove(versionId);
+	// 		gobalID += 1l;
+	// 		long viewId = gobalID;
+	// 		activeIds.add(viewId);
+	// 		return viewId;
+	// 	} finally {
+	// 		activeLock.writeLock().unlock();
+	// 	}
+	// }
 
 	public Ticket buyTicket(String passenger, int route, int departure, int arrival) {
 		while (true) {
@@ -98,10 +92,10 @@ public class TicketingDS implements TicketingSystem {
 			long versionId = beginTrx();
 			ResultSeat result = routes[route].tryBuyTicket(pos, versionId, passenger, departure, arrival);
 			if (result.result == Result.SUCCESSED) {
-				closeTrx(versionId);
+				closeTrx();
 				return routes[route].commitBuyTicket(result.seatId);
 			}
-			closeTrx(versionId);
+			closeTrx();
 		}
 	}
 
@@ -116,13 +110,13 @@ public class TicketingDS implements TicketingSystem {
 			int route = ticket.route;
 			ResultSeat result = routes[route].tryRefundTicket(versionId, ticket);
 			if (result.result == Result.SUCCESSED) {
-				closeTrx(versionId);
+				closeTrx();
 				routes[route].commitRefundTicket(result.seatId);
 				return true;
 			} else if (result.result == Result.TICKETNOTFOUND) {
 				return false;
 			}
-			closeTrx(versionId);
+			closeTrx();
 		}
 	}
 

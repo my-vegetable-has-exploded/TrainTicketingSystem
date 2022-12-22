@@ -26,7 +26,6 @@ public class Route {
 	Seat[] seats;
 	AtomicLong gobalID;
 	View preView;
-	volatile boolean isCacheViewUpdate;
 	WFSnapshot<Long> theadViewId;
 	// long gobalID;
 	// ReentrantReadWriteLock activeLock;
@@ -35,7 +34,8 @@ public class Route {
 		this.routeId = routeId;
 		this.coachnum = coachnum;
 		this.seatnum = seatnum;
-		this.threadnum=threadnum;
+		this.stationnum = stationnum;
+		this.threadnum = threadnum;
 		totalseats = coachnum * seatnum;
 		seats = new Seat[totalseats];
 		for (int i = 0; i < coachnum; i++) {
@@ -45,14 +45,13 @@ public class Route {
 		}
 		gobalID = new AtomicLong(1);
 		preView = null;
-		isCacheViewUpdate = false;
 		this.theadViewId = new WFSnapshot<Long>(threadnum, Long.valueOf(0));
 	}
 
 	public View createView() {
-		if (isCacheViewUpdate) {
-			return preView;
-		}
+		// if (isCacheViewUpdate) {
+		// return preView;
+		// }
 		Long viewId = gobalID.get();
 		HashSet<Long> actives = new HashSet<Long>();
 		ArrayList<Long> activeIds = theadViewId.scan();
@@ -61,40 +60,40 @@ public class Route {
 				actives.add(id);
 			}
 		}
-		preView = new View(viewId, actives);
-		isCacheViewUpdate = true;
-		return preView;
+		return new View(viewId, actives);
+		// isCacheViewUpdate = true;
+		// return preView;
 	}
 
 	public long beginTrx() {
 		Long viewId = gobalID.incrementAndGet();
 		theadViewId.update(viewId);
-		isCacheViewUpdate = false;
+		// isCacheViewUpdate = false;
 		return viewId;
 	}
 
 	public boolean closeTrx() {
 		theadViewId.update(0L);
-		isCacheViewUpdate = false;
+		// isCacheViewUpdate = false;
 		return true;
 	}
 
 	// public long reopenTrx(long versionId) {
-	// 	activeLock.writeLock().lock();
-	// 	try {
-	// 		activeIds.remove(versionId);
-	// 		gobalID += 1l;
-	// 		long viewId = gobalID;
-	// 		activeIds.add(viewId);
-	// 		return viewId;
-	// 	} finally {
-	// 		activeLock.writeLock().unlock();
-	// 	}
+	// activeLock.writeLock().lock();
+	// try {
+	// activeIds.remove(versionId);
+	// gobalID += 1l;
+	// long viewId = gobalID;
+	// activeIds.add(viewId);
+	// return viewId;
+	// } finally {
+	// activeLock.writeLock().unlock();
+	// }
 	// }
 
 	public Ticket buyTicket(String passenger, int departure, int arrival) {
 		while (true) {
-			int pos = checkInquiry( departure, arrival);
+			int pos = checkInquiry(departure, arrival);
 			if (pos == -1) {
 				return null;
 			}
@@ -117,15 +116,14 @@ public class Route {
 				commitRefundTicket(result.seatId);
 				return true;
 			} else if (result.result == Result.TICKETNOTFOUND) {
+				closeTrx();
 				return false;
 			}
 			closeTrx();
 		}
 	}
 
-
-
-	public int inquiry( int departure, int arrival) {
+	public int inquiry(int departure, int arrival) {
 		View view = createView();
 		int restTicket = 0;
 		for (int i = 0; i < totalseats; i += 1) {
@@ -136,7 +134,7 @@ public class Route {
 		return restTicket;
 	}
 
-	public int checkInquiry( int departure, int arrival) {
+	public int checkInquiry(int departure, int arrival) {
 		View view = createView();
 		int position = ThreadLocalRandom.current().nextInt(0, totalseats);
 		for (int i = 0; i < coachnum * seatnum; i += 1) {

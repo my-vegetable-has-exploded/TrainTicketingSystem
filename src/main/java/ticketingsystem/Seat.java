@@ -6,7 +6,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Seat {
 	ReentrantLock seatLock;
-	HashMap<Long,Ticket>soldTickets;
+	HashMap<Long, Ticket> soldTickets;
 	ArrayList<VersionState> versionStates;
 	int routeId;
 	int coachId;
@@ -26,9 +26,13 @@ public class Seat {
 		tail = 0;
 	}
 
+	static public int toSeatPosition(int coach, int seat, int seatnum) {
+		return (coach - 1) * seatnum + seat - 1;
+	}
+
 	public Ticket issueTicket(String passenger, long tid, int route, int coach, int seat, int departure, int arrival) {
 		Ticket ticket = new Ticket();
-		ticket.tid = tid;
+		ticket.tid = (tid << 10L) + route;
 		ticket.route = route;
 		ticket.coach = coach;
 		ticket.seat = seat;
@@ -97,7 +101,8 @@ public class Seat {
 		if (checkState(lastState.state, departure, arrival)) {
 			versionStates.add(new VersionState(version, stateBuy(lastState.state, departure, arrival)));
 			tail += 1;
-			soldTickets.put(version, issueTicket(passenger, version, routeId, coachId, seatId, departure, arrival));
+			Ticket tic = issueTicket(passenger, version, routeId, coachId, seatId, departure, arrival);
+			soldTickets.put(tic.tid, tic);
 			return Result.SUCCESSED;
 		} else {
 			seatLock.unlock();
@@ -180,7 +185,8 @@ public class Seat {
 
 	public Ticket commitBuyTicket() {
 		VersionState lastState = versionStates.get(tail);
-		Ticket ticket = soldTickets.get(lastState.version);
+		Long tid = (lastState.version << 10) + routeId;
+		Ticket ticket = soldTickets.get(tid);
 		seatLock.unlock();
 		return ticket;
 	}

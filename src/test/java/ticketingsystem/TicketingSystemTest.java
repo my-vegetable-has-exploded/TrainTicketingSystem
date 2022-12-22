@@ -44,6 +44,8 @@ public class TicketingSystemTest extends TestCase {
 	public void testmain() throws InterruptedException {
 		// final int[] threadNums = { 4, 8, 16, 32, 64 };
 		final int[] threadNums = { 1, 2, 4 };
+		System.out.printf("%d routes %d coachs %d seats %d stations %d operator\n", ROUTE_NUM, COACH_NUM, SEAT_NUM,
+				STATION_NUM, TEST_NUM);
 		int p;
 		for (p = 0; p < threadNums.length; ++p) {
 			final TicketingDS tds = new TicketingDS(ROUTE_NUM, COACH_NUM, SEAT_NUM, STATION_NUM, threadNums[p]);

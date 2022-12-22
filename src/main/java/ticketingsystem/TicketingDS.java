@@ -22,8 +22,8 @@ public class TicketingDS implements TicketingSystem {
 		this.routenum = routenum;
 		this.coachnum = coachnum;
 		this.seatnum = seatnum;
-		this.threadnum = threadnum;
 		this.stationnum = stationnum;
+		this.threadnum = threadnum;
 		ThreadID.reset();
 	}
 

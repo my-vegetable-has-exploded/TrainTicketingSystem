@@ -1,7 +1,10 @@
 package ticketingsystem;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLong;
 
 class ResultSeat {
 	Result result;
@@ -19,12 +22,20 @@ public class Route {
 	int seatnum;
 	int stationnum;
 	int totalseats;
+	int threadnum;
 	Seat[] seats;
+	AtomicLong gobalID;
+	View preView;
+	volatile boolean isCacheViewUpdate;
+	WFSnapshot<Long> theadViewId;
+	// long gobalID;
+	// ReentrantReadWriteLock activeLock;
 
-	public Route(int routeId, int coachnum, int seatnum, int stationnum) {
+	public Route(int routeId, int coachnum, int seatnum, int stationnum, int threadnum) {
 		this.routeId = routeId;
 		this.coachnum = coachnum;
 		this.seatnum = seatnum;
+		this.threadnum=threadnum;
 		totalseats = coachnum * seatnum;
 		seats = new Seat[totalseats];
 		for (int i = 0; i < coachnum; i++) {
@@ -32,9 +43,90 @@ public class Route {
 				seats[i * seatnum + j] = new Seat(routeId, i + 1, j + 1, stationnum);
 			}
 		}
+		gobalID = new AtomicLong(1);
+		preView = null;
+		isCacheViewUpdate = false;
+		this.theadViewId = new WFSnapshot<Long>(threadnum, Long.valueOf(0));
 	}
 
-	public int inquiry(View view, int departure, int arrival) {
+	public View createView() {
+		if (isCacheViewUpdate) {
+			return preView;
+		}
+		Long viewId = gobalID.get();
+		HashSet<Long> actives = new HashSet<Long>();
+		ArrayList<Long> activeIds = theadViewId.scan();
+		for (Long id : activeIds) {
+			if (id != 0) {
+				actives.add(id);
+			}
+		}
+		preView = new View(viewId, actives);
+		isCacheViewUpdate = true;
+		return preView;
+	}
+
+	public long beginTrx() {
+		Long viewId = gobalID.incrementAndGet();
+		theadViewId.update(viewId);
+		isCacheViewUpdate = false;
+		return viewId;
+	}
+
+	public boolean closeTrx() {
+		theadViewId.update(0L);
+		isCacheViewUpdate = false;
+		return true;
+	}
+
+	// public long reopenTrx(long versionId) {
+	// 	activeLock.writeLock().lock();
+	// 	try {
+	// 		activeIds.remove(versionId);
+	// 		gobalID += 1l;
+	// 		long viewId = gobalID;
+	// 		activeIds.add(viewId);
+	// 		return viewId;
+	// 	} finally {
+	// 		activeLock.writeLock().unlock();
+	// 	}
+	// }
+
+	public Ticket buyTicket(String passenger, int departure, int arrival) {
+		while (true) {
+			int pos = checkInquiry( departure, arrival);
+			if (pos == -1) {
+				return null;
+			}
+			long versionId = beginTrx();
+			ResultSeat result = tryBuyTicket(pos, versionId, passenger, departure, arrival);
+			if (result.result == Result.SUCCESSED) {
+				closeTrx();
+				return commitBuyTicket(result.seatId);
+			}
+			closeTrx();
+		}
+	}
+
+	public boolean refundTicket(Ticket ticket) {
+		while (true) {
+			long versionId = beginTrx();
+			ResultSeat result = tryRefundTicket(versionId, ticket);
+			if (result.result == Result.SUCCESSED) {
+				closeTrx();
+				commitRefundTicket(result.seatId);
+				return true;
+			} else if (result.result == Result.TICKETNOTFOUND) {
+				return false;
+			}
+			closeTrx();
+		}
+	}
+
+
+
+	public int inquiry( int departure, int arrival) {
+		View view = createView();
 		int restTicket = 0;
 		for (int i = 0; i < totalseats; i += 1) {
 			if (seats[i].isViewedAvaliable(view, departure, arrival)) {
@@ -44,7 +136,8 @@ public class Route {
 		return restTicket;
 	}
 
-	public int checkInquiry(View view, int departure, int arrival) {
+	public int checkInquiry( int departure, int arrival) {
+		View view = createView();
 		int position = ThreadLocalRandom.current().nextInt(0, totalseats);
 		for (int i = 0; i < coachnum * seatnum; i += 1) {
 			if (seats[position].isViewedAvaliable(view, departure, arrival)) {
